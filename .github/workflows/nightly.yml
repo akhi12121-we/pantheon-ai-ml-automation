@@ -1,10 +1,7 @@
 name: 🌙 Nightly API Tests
 
 on:
-  schedule:
-    # Run comprehensive tests every night at 3 AM UTC
-    - cron: '0 3 * * *'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   comprehensive-test:

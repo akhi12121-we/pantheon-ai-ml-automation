@@ -236,13 +236,7 @@ class XTMProjectPage:
         
         # Get the move arrow locator
         move_arrow = iframe.locator(self.MOVE_RIGHT_ARROW)
-        
-        # Select German (Germany) option first
-        await target_select.select_option(label="German (Germany)")
-        logger.info("Selected German (Germany) from target languages")
-        await move_arrow.click()
-        logger.info("Moved German (Germany) to selected languages")
-        
+                
         # Select French (France) option
         await target_select.select_option(label="French (France)")
         logger.info("Selected French (France) from target languages")
