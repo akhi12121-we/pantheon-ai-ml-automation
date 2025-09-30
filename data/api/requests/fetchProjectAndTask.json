@@ -1,0 +1,9 @@
+{
+  "limit": 10,
+  "offset": 0,
+  "include": "account,clientServiceGroups,primaryProjectManager,projectContacts,projectUsers",
+  "order_by": "createdAt,id",
+  "order_dir": "DESC",
+  "searchTerm": "{{PROJECT_NAME}}",
+  "searchFields": "project.name,project.clientRefId,project.accountProgram.account.name,project.state"
+}

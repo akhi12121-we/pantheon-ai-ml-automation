@@ -1,0 +1,125 @@
+name: 🚀 API Automation Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Run tests daily at 2 AM UTC
+    - cron: '0 2 * * *'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        
+    - name: 📦 Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name: 📋 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: 🧪 Run Apollo API tests
+      run: |
+        python run_tests.py --test-path tests/test_apollo/test_apollo.py --report allure
+      env:
+        APOLLO_URL: https://apollo.welocalize.io
+        LOG_LEVEL: INFO
+        
+    - name: 📊 Generate Allure HTML report
+      run: |
+        python generate_allure_html.py
+        
+    - name: 📈 Generate test summary
+      run: |
+        echo "Test execution completed successfully"
+        
+    - name: 📁 Upload test results
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: test-results-${{ matrix.python-version }}
+        path: |
+          allure-results/
+          allure-report/
+          reports/
+          logs/
+        retention-days: 30
+        
+    - name: 📊 Upload coverage reports
+      uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: coverage-report-${{ matrix.python-version }}
+        path: reports/coverage/
+        retention-days: 30
+        
+    - name: 🚨 Comment PR with test results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Read test results
+          let testSummary = '## 🧪 Test Results\n\n';
+          
+          try {
+            // Check if test results exist
+            if (fs.existsSync('test_results_report.html')) {
+              testSummary += '✅ Tests completed successfully!\n\n';
+              testSummary += '📊 **Reports Generated:**\n';
+              testSummary += '- Allure HTML Report\n';
+              testSummary += '- Coverage Report\n';
+              testSummary += '- Test Summary\n\n';
+              testSummary += '📁 **Artifacts:** Check the Actions tab for downloadable reports.\n';
+            } else {
+              testSummary += '❌ No test results found.\n';
+            }
+          } catch (error) {
+            testSummary += `❌ Error reading test results: ${error.message}\n`;
+          }
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: testSummary
+          });
+
+  deploy-reports:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Download all artifacts
+      uses: actions/download-artifact@v3
+      
+    - name: 📊 Deploy reports to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./allure-report
+        destination_dir: reports

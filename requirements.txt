@@ -1,0 +1,24 @@
+# Core Dependencies
+requests==2.31.0
+pytest>=8.2.0
+python-dotenv==1.0.0
+
+# Reporting
+pytest-html==4.1.1
+pytest-cov==4.1.0
+allure-pytest==2.13.2
+
+# UI Automation
+playwright>=1.55.0
+pytest-playwright>=0.7.0
+pytest-asyncio>=1.1.0
+
+# Enhanced Testing
+pytest-xdist>=3.3.0  # Parallel execution
+pytest-rerunfailures>=12.0  # Retry failed tests
+pytest-timeout>=2.1.0  # Test timeouts
+
+# Utilities
+faker>=19.0.0  # Test data generation
+pillow>=10.0.0  # Image processing for screenshots
+pyyaml>=6.0  # YAML file support

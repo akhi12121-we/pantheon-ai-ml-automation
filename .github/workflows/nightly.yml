@@ -1,0 +1,78 @@
+name: 🌙 Nightly API Tests
+
+on:
+  schedule:
+    # Run comprehensive tests every night at 3 AM UTC
+    - cron: '0 3 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  comprehensive-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+      
+    - name: 🐍 Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name: 📋 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: 🧪 Run all Apollo tests with multiple reports
+      run: |
+        # Run tests with all reporting options
+        python run_tests.py --test-path tests/test_apollo/test_apollo.py --report all
+        
+        # Generate additional reports
+        python generate_allure_html.py
+      env:
+        APOLLO_URL: https://apollo.welocalize.io
+        LOG_LEVEL: DEBUG
+        
+    - name: 📊 Generate comprehensive report
+      run: |
+        echo "# 🌙 Nightly Test Report - $(date)" > nightly_report.md
+        echo "" >> nightly_report.md
+        echo "## Test Summary" >> nightly_report.md
+        echo "- **Date:** $(date)" >> nightly_report.md
+        echo "- **Python Version:** $(python --version)" >> nightly_report.md
+        echo "- **Tests Run:** Apollo API Tests" >> nightly_report.md
+        echo "" >> nightly_report.md
+        echo "## Reports Generated" >> nightly_report.md
+        echo "- Allure HTML Report" >> nightly_report.md
+        echo "- Coverage Report" >> nightly_report.md
+        echo "- Test Summary Report" >> nightly_report.md
+        echo "" >> nightly_report.md
+        echo "## Artifacts" >> nightly_report.md
+        echo "Check the Actions tab for downloadable reports." >> nightly_report.md
+        
+    - name: 📁 Upload nightly reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: nightly-reports-${{ github.run_number }}
+        path: |
+          allure-results/
+          allure-report/
+          reports/
+          logs/
+          nightly_report.md
+        retention-days: 90
+        
+    - name: 📧 Notify on failure
+      if: failure()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `🚨 Nightly Tests Failed - ${new Date().toISOString().split('T')[0]}`,
+            body: `Nightly API tests failed. Please check the [Actions tab](${context.payload.repository.html_url}/actions) for details.`,
+            labels: ['bug', 'ci-failure']
+          });
