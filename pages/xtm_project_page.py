@@ -237,11 +237,11 @@ class XTMProjectPage:
         # Get the move arrow locator
         move_arrow = iframe.locator(self.MOVE_RIGHT_ARROW)
                 
-        # Select French (France) option
-        await target_select.select_option(label="French (France)")
-        logger.info("Selected French (France) from target languages")
+        # Select German (Germany) option
+        await target_select.select_option(label="German (Germany)")
+        logger.info("Selected German (Germany) from target languages")
         await move_arrow.click()
-        logger.info("Moved French (France) to selected languages")
+        logger.info("Moved German (Germany) to selected languages")
     
     async def upload_file(self, file_path):
         """Wait for upload field to be visible and upload file."""

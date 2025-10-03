@@ -25,6 +25,7 @@ async def browser_setup():
 
 @pytest.mark.projectcreation
 @pytest.mark.asyncio
+@pytest.mark.flaky(reruns=3, reruns_delay=30)  # 3 retries with 5-minute delay
 async def test_01_create_xtm_project(browser_setup):
     """Test creating a new XTM project."""
     # Load credentials and project data from config

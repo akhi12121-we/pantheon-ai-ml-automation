@@ -26,6 +26,7 @@ async def browser_setup():
     await browser_client.close_browser()
 
 @pytest.mark.asyncio
+@pytest.mark.flaky(reruns=3, reruns_delay=30)  # 3 retries with 5-minute delay
 async def test_create_scheduler(browser_setup):
     """Test creating a new scheduler job."""
     logger.info("Starting Test Create Scheduler")

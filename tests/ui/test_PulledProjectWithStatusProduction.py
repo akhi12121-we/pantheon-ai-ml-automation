@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test Search Project Relay - Search for a project using the relay page.
+Test Pulled Project With Status Production - Verify production status for a pulled project.
 """
 import pytest
 import pytest_asyncio
@@ -34,10 +34,9 @@ def read_project_name():
         raise
 
 @pytest.mark.asyncio
-@pytest.mark.flaky(reruns=3, reruns_delay=30)  # 3 retries with 5-minute delay
-async def test_search_project_relay(browser_setup):
-    """Test searching for a project using the relay page."""
-    logger.info("Starting Test Search Project Relay")
+async def test_verify_pulled_project_production_status(browser_setup):
+    """Test verifying production status for a pulled project."""
+    logger.info("Starting Test Verify Pulled Project Production Status")
     
     try:
         # Read project name from file
@@ -47,16 +46,15 @@ async def test_search_project_relay(browser_setup):
         # Create relay page object
         relay_page = RelayPage(browser_client.page)
         
-        # Call the search_project_name function
-        success = await relay_page.search_project_name(
-            search_term=project_name,
-            expected_text=project_name
+        # Call the verify_pulledProject_is_ProductionStatus function
+        success = await relay_page.verify_pulledProject_is_ProductionStatus(
+            search_term=project_name
         )
         
         # Assert the result
-        assert success, f"Test Search Project Relay failed - search_project_name returned False for project: {project_name}"
-        logger.info("Test Search Project Relay completed successfully!")
+        assert success, f"Test Verify Pulled Project Production Status failed - verify_pulledProject_is_ProductionStatus returned False for project: {project_name}"
+        logger.info("Test Verify Pulled Project Production Status completed successfully!")
         
     except Exception as e:
-        logger.error(f"Test Search Project Relay failed with exception: {e}")
+        logger.error(f"Test Verify Pulled Project Production Status failed with exception: {e}")
         raise

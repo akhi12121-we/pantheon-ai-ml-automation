@@ -13,6 +13,55 @@ def clean_allure_results():
     allure_helper.clean_results()
     return True
 
+def fix_allure_results():
+    """Fix existing Allure results to make them compatible."""
+    import json
+    import os
+    from pathlib import Path
+    
+    results_dir = Path("allure-results")
+    if not results_dir.exists():
+        print("❌ No Allure results found to fix.")
+        return False
+    
+    print("🔧 Fixing Allure results...")
+    
+    # Find all result files
+    result_files = list(results_dir.glob("*-result.json"))
+    if not result_files:
+        print("❌ No result files found.")
+        return False
+    
+    # Create containers for each result
+    containers_created = 0
+    for result_file in result_files:
+        try:
+            with open(result_file, 'r', encoding='utf-8') as f:
+                result_data = json.load(f)
+            
+            # Create container file
+            container_uuid = str(result_data['uuid']).replace('-result', '-container')
+            container_data = {
+                "uuid": container_uuid,
+                "name": result_data.get('name', 'Test'),
+                "children": [result_data['uuid']],
+                "befores": [],
+                "afters": []
+            }
+            
+            container_file = results_dir / f"{container_uuid}.json"
+            with open(container_file, 'w', encoding='utf-8') as f:
+                json.dump(container_data, f, indent=2)
+            
+            containers_created += 1
+            
+        except Exception as e:
+            print(f"⚠️ Error fixing {result_file}: {e}")
+            continue
+    
+    print(f"✅ Fixed {containers_created} result files with containers.")
+    return True
+
 def generate_allure_html(clean_first: bool = False):
     """Generate Allure HTML report."""
     allure_bin = Path("allure/allure-2.24.1/bin/allure.bat")
@@ -34,6 +83,10 @@ def generate_allure_html(clean_first: bool = False):
         print("❌ No Allure results found. Run tests first to generate results.")
         print("💡 Use: pytest tests/ -v -s")
         return False
+    
+    # Fix existing results to make them compatible
+    print("🔧 Fixing Allure results for compatibility...")
+    fix_allure_results()
     
     print("🎭 Generating Allure HTML report...")
     
@@ -63,7 +116,7 @@ def generate_allure_html(clean_first: bool = False):
 
 def run_tests_and_generate_report(test_path: str = "tests/", clean_results: bool = True):
     """Run tests and generate Allure report in one command."""
-    print("🧪 Running tests with Allure reporting...")
+    print("🧪 Running tests...")
     
     # Clean old results if requested
     if clean_results:
@@ -71,8 +124,8 @@ def run_tests_and_generate_report(test_path: str = "tests/", clean_results: bool
         allure_helper.clean_results()
     
     try:
-        # Run pytest (without --alluredir since we're using custom Allure helper)
-        cmd = ["pytest", test_path, "-v", "-s"]
+        # Run pytest with proper Allure integration
+        cmd = ["pytest", test_path, "-v", "-s", "--alluredir=allure-results"]
         result = subprocess.run(cmd, check=True)
         
         print("✅ Tests completed successfully!")
@@ -89,6 +142,10 @@ def run_tests_and_generate_report(test_path: str = "tests/", clean_results: bool
             
     except subprocess.CalledProcessError as e:
         print(f"❌ Tests failed: {e}")
+        # Even if tests fail, try to generate report from existing results
+        print("🔄 Attempting to generate report from existing results...")
+        if generate_allure_html():
+            serve_allure_report()
         return False
     except Exception as e:
         print(f"❌ Unexpected error: {e}")
@@ -130,6 +187,8 @@ if __name__ == "__main__":
             run_tests_and_generate_report(test_path, clean_results)
         elif sys.argv[1] == "clean":
             clean_allure_results()
+        elif sys.argv[1] == "fix":
+            fix_allure_results()
         elif sys.argv[1] == "generate":
             clean_first = "--clean" in sys.argv
             generate_allure_html(clean_first)
@@ -148,5 +207,6 @@ if __name__ == "__main__":
             print("  python generate_allure_html.py run --no-clean     # Run tests and generate report (keeps old results)")
             print("  python generate_allure_html.py run tests/ui/      # Run specific test path")
             print("  python generate_allure_html.py clean              # Clean all Allure results")
+            print("  python generate_allure_html.py fix                # Fix existing results for compatibility")
     else:
         generate_allure_html()

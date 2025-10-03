@@ -156,10 +156,8 @@ class Config:
     # VIDEO RECORDING CONFIGURATION
     # ===========================================
     
-    # Video Recording Settings - Optimized for Failed Tests Only
-    VIDEO_RECORDING = os.getenv("VIDEO_RECORDING", "false").lower() == "true"
-    VIDEO_ON_FAILURE = os.getenv("VIDEO_ON_FAILURE", "true").lower() == "true"
-    VIDEO_ON_SUCCESS = os.getenv("VIDEO_ON_SUCCESS", "false").lower() == "true"
+    # Video Recording Settings - Playwright handles failure-only automatically
+    VIDEO_RECORDING = os.getenv("VIDEO_RECORDING", "true").lower() == "false"
     VIDEO_PATH = os.getenv("VIDEO_PATH", "videos")
     VIDEO_FORMAT = os.getenv("VIDEO_FORMAT", "webm")  # webm, mp4
     VIDEO_QUALITY = os.getenv("VIDEO_QUALITY", "medium")  # low, medium, high

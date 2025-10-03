@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test Search Project Relay - Search for a project using the relay page.
+Test AI Task Verification - Verify all AI-related task completions.
 """
 import pytest
 import pytest_asyncio
@@ -34,10 +34,9 @@ def read_project_name():
         raise
 
 @pytest.mark.asyncio
-@pytest.mark.flaky(reruns=3, reruns_delay=30)  # 3 retries with 5-minute delay
-async def test_search_project_relay(browser_setup):
-    """Test searching for a project using the relay page."""
-    logger.info("Starting Test Search Project Relay")
+async def test_verify_ai_task_completion(browser_setup):
+    """Test verifying all AI-related task completions."""
+    logger.info("Starting Test Verify AI Task Completion")
     
     try:
         # Read project name from file
@@ -47,16 +46,11 @@ async def test_search_project_relay(browser_setup):
         # Create relay page object
         relay_page = RelayPage(browser_client.page)
         
-        # Call the search_project_name function
-        success = await relay_page.search_project_name(
-            search_term=project_name,
-            expected_text=project_name
-        )
+        # Call the verify_completion_ai_related_tasks function
+        await relay_page.verify_completion_ai_related_tasks(project_name)
         
-        # Assert the result
-        assert success, f"Test Search Project Relay failed - search_project_name returned False for project: {project_name}"
-        logger.info("Test Search Project Relay completed successfully!")
+        logger.info("Test Verify AI Task Completion completed successfully!")
         
     except Exception as e:
-        logger.error(f"Test Search Project Relay failed with exception: {e}")
+        logger.error(f"Test Verify AI Task Completion failed with exception: {e}")
         raise

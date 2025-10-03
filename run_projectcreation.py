@@ -24,12 +24,35 @@ def run_test(test_path, test_name):
     env['PYTHONPATH'] = os.getcwd()
     
     result = subprocess.run(cmd, env=env)
+    
+    # Generate Allure result for this test
+    try:
+        from utils.allure_helper import allure_helper
+        status = "passed" if result.returncode == 0 else "failed"
+        allure_helper.generate_test_result(
+            test_name=test_name,
+            status=status,
+            test_class="TestSuite",
+            package="tests",
+            suite="Project Creation Tests"
+        )
+    except Exception as e:
+        print(f"⚠️ Could not generate Allure result: {e}")
+    
     return result.returncode
 
 def main():
     """Run tests in the correct order."""
     print("Starting Project Creation Workflow")
     print("=" * 60)
+    
+    # Clean old Allure results
+    print("🧹 Cleaning old Allure results...")
+    try:
+        from utils.allure_helper import allure_helper
+        allure_helper.clean_results()
+    except Exception as e:
+        print(f"⚠️ Could not clean old results: {e}")
     
     # Test 1: Create Project (UI)
     print("\n1. Creating Project (UI Test)")
@@ -67,6 +90,16 @@ def main():
     print("\n" + "="*60)
     print("✅ All Project Creation Tests Completed Successfully!")
     print("="*60)
+    
+    # Generate Allure Report
+    print("\n📊 Generating Allure Report...")
+    try:
+        from generate_allure_html import generate_allure_html
+        generate_allure_html()
+        print("✅ Allure report generated successfully!")
+    except Exception as e:
+        print(f"❌ Failed to generate Allure report: {e}")
+    
     return 0
 
 if __name__ == "__main__":

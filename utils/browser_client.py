@@ -58,8 +58,8 @@ class BrowserClient:
         if args and any("certificate" in arg or "ssl" in arg for arg in args):
             context_options["ignore_https_errors"] = True
         
-        # Add video recording if enabled for failures
-        if config.should_record_video_for_failure():
+        # Add video recording - Playwright will handle failure-only logic
+        if config.VIDEO_RECORDING:
             context_options["record_video_dir"] = config.VIDEO_PATH
         
         # Add mobile device config if specified
@@ -320,17 +320,7 @@ class BrowserClient:
             return None
     
     async def save_video(self, test_name: str = None, test_failed: bool = False):
-        """Save video recording with failure detection."""
-        # Check if video should be saved based on failure status
-        if test_failed and not config.should_record_video_for_failure():
-            logger.info("Video recording skipped - not configured for failed tests only")
-            return None
-        elif not test_failed and config.VIDEO_FAILED_TESTS_ONLY:
-            logger.info("Video recording skipped - only recording videos for failed tests")
-            return None
-        elif not config.should_record_video():
-            return None
-            
+        """Save video recording - simplified."""
         try:
             video_path = await self.page.video.path()
             if video_path and test_name:
@@ -338,18 +328,16 @@ class BrowserClient:
                 video_dir = Path(config.VIDEO_PATH)
                 video_dir.mkdir(exist_ok=True)
                 
-                # Generate new filename with failure status
-                timestamp = int(asyncio.get_event_loop().time())
-                failure_suffix = "_FAILED" if test_failed else "_SUCCESS"
-                new_filename = f"{test_name}{failure_suffix}_{timestamp}.{config.VIDEO_FORMAT}"
-                new_path = video_dir / new_filename
+                # Generate filename
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                video_filename = f"{test_name}_{timestamp}.{config.VIDEO_FORMAT}"
+                new_path = video_dir / video_filename
                 
                 # Move video file
                 import shutil
                 shutil.move(video_path, new_path)
                 
-                status = "FAILED" if test_failed else "SUCCESS"
-                logger.info(f"Video saved ({status}): {new_path}")
+                logger.info(f"Video saved: {new_path}")
                 return str(new_path)
         except Exception as e:
             logger.warning(f"Could not save video: {e}")
