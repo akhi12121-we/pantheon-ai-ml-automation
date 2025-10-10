@@ -79,6 +79,13 @@ class RelayPage:
     COMPLETION_MESSAGE = "This task was completed by"
     RIGHT_ARROW = ".pagination-controls .icon-arrow-right"
     DISABLED_RIGHT_ARROW = ".pagination-controls .disabled.icon-arrow-right"
+    CHEVRON_ICON = "i.icon-chevron"
+    MACHINE_TRANSLATED_TEXT = "div[title='Machine Translated']"
+    WORDS_COUNT = "div[title='965']"
+    DE_DE_ENTERPRISE_ICON = ".timeline-row:has-text('de-DE:') i.icon-chevron-down.small.pointer"
+    COPY_EDIT_LINK = "a.truncate-link:has-text('Copy Edit')"
+    COPY_EDIT_MODAL_HEADING = "div.task-modal-header h4"
+    MACHINE_TRANSLATED_VALUE = "tr.task-offer-detail:has-text('Machine Translated') span.edit-icon-wrapper span.allow-ellipses"
     
     def __init__(self, page: Page):
         """
@@ -941,3 +948,244 @@ class RelayPage:
             logger.error(f"AI-related task verification failed: {e}")
             raise
     
+    async def click_chevron_icon_quote(self) -> None:
+        """
+        Click the chevron icon.
+        
+        This function clicks the chevron icon element.
+        """
+        try:
+            logger.info("Clicking chevron icon")
+            await self.page.click(self.CHEVRON_ICON)
+            logger.info("Chevron icon clicked successfully")
+        except Exception as e:
+            logger.error(f"Failed to click chevron icon: {e}")
+            raise
+    
+    async def verify_machine_translated_and_words_count_extract(self) -> str:
+        """
+        Verify Machine Translated text and extract words count.
+        
+        This function verifies Machine Translated text and returns the words count text for further verification.
+        
+        Returns:
+            str: Words count text if found, empty string if not found
+        """
+        try:
+            logger.info("Verifying Machine Translated text and extracting words count")
+            
+            # Verify Machine Translated text
+            machine_translated_element = self.page.locator(self.MACHINE_TRANSLATED_TEXT)
+            if await machine_translated_element.count() > 0:
+                machine_translated_text = await machine_translated_element.text_content()
+                if "Machine Translated" in machine_translated_text:
+                    logger.info("Machine Translated text verified successfully")
+                else:
+                    logger.warning(f"Machine Translated text not found, found: {machine_translated_text}")
+                    return ""
+            else:
+                logger.warning("Machine Translated element not found")
+                return ""
+            
+            # Extract words count
+            words_count_element = self.page.locator(self.WORDS_COUNT)
+            if await words_count_element.count() > 0:
+                words_count_text = await words_count_element.text_content()
+                logger.info(f"Words count extracted: {words_count_text}")
+                return words_count_text
+            else:
+                logger.warning("Words count element not found")
+                return ""
+            
+        except Exception as e:
+            logger.error(f"Failed to verify Machine Translated and extract words count: {e}")
+            return ""
+    
+    async def click_de_de_enterprise_icon(self) -> None:
+        """
+        Click the de-DE: Enterprise icon.
+        
+        This function clicks the de-DE: Enterprise chevron icon.
+        """
+        try:
+            logger.info("Clicking de-DE: Enterprise icon")
+            await self.page.click(self.DE_DE_ENTERPRISE_ICON)
+            logger.info("de-DE: Enterprise icon clicked successfully")
+        except Exception as e:
+            logger.error(f"Failed to click de-DE: Enterprise icon: {e}")
+            raise
+    
+    async def click_copy_edit_link_and_verify_modal(self) -> bool:
+        """
+        Click Copy Edit link and verify modal popup with heading.
+        
+        This function clicks the Copy Edit link and verifies that the modal popup appears with the correct heading.
+        
+        Returns:
+            bool: True if modal appears with correct heading, False otherwise
+        """
+        try:
+            logger.info("Clicking Copy Edit link")
+            await self.page.click(self.COPY_EDIT_LINK)
+            logger.info("Copy Edit link clicked successfully")
+            
+            # Wait for modal to appear
+            await self.page.wait_for_timeout(2000)
+            
+            # Verify modal heading
+            logger.info("Verifying Copy Edit modal heading")
+            modal_heading = self.page.locator(self.COPY_EDIT_MODAL_HEADING)
+            
+            if await modal_heading.count() > 0:
+                heading_text = await modal_heading.text_content()
+                if "Copy Edit" in heading_text and "German (Germany)" in heading_text:
+                    logger.info("Copy Edit modal heading verified successfully")
+                    return True
+                else:
+                    logger.warning(f"Modal heading not as expected, found: {heading_text}")
+                    return False
+            else:
+                logger.warning("Copy Edit modal heading not found")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to click Copy Edit link and verify modal: {e}")
+            return False
+    
+    async def extract_machine_translated_value_from_modal(self) -> str:
+        """
+        Extract the Machine Translated value (916) from the modal.
+        
+        This function extracts the value from the Machine Translated row in the modal table.
+        
+        Returns:
+            str: The extracted value (e.g., "916") if found, empty string if not found
+        """
+        try:
+            logger.info("Extracting Machine Translated value from modal")
+            
+            # Find the Machine Translated value element
+            value_element = self.page.locator(self.MACHINE_TRANSLATED_VALUE)
+            
+            if await value_element.count() > 0:
+                value_text = await value_element.text_content()
+                logger.info(f"Machine Translated value extracted: {value_text}")
+                return value_text
+            else:
+                logger.warning("Machine Translated value element not found in modal")
+                return ""
+                
+        except Exception as e:
+            logger.error(f"Failed to extract Machine Translated value from modal: {e}")
+            return ""
+    
+    async def verify_mt_count_less_then_copyEdit_MT_count(self, project_name: str) -> bool:
+        """
+        Comprehensive function to verify MT count is less than Copy Edit MT count.
+        
+        This function performs the complete workflow:
+        1. Navigate to relay and login
+        2. Click project
+        3. Click all project - wait to load
+        4. Search project - wait to load
+        5. Click project name - wait to load
+        6. Click timeline - wait to load network calls
+        7. Click de-DE: Enterprise icon - wait to load
+        8. Click Copy Edit link and verify modal - wait to load and save MT text value
+        9. Extract Machine Translated value from modal - wait to load and save MT text value
+        10. Compare step 8 value should be less than step 9 extracted values
+        11. Finish test
+        
+        Args:
+            project_name (str): Project name to search for
+            
+        Returns:
+            bool: True if MT count is less than Copy Edit MT count, False otherwise
+        """
+        
+        logger.info("Starting comprehensive MT count verification workflow")
+        
+        # Step 1: Navigate to relay and login
+        logger.info("Step 1: Navigating to relay and logging in")
+        await self.navigate_to_relay_page()
+        await self.page.wait_for_load_state("networkidle")
+        await self.click_welocalize_login_button()
+        await self.page.wait_for_load_state("networkidle")
+        
+        # Get credentials from config
+        username = get_config_value('pantheon_login_data', 'username', 'pantheon_data.ini')
+        password = get_config_value('pantheon_login_data', 'password', 'pantheon_data.ini')
+        
+        await self.type_username(username)
+        await self.click_next_button()
+        await self.page.wait_for_load_state("networkidle")
+        await self.type_password(password)
+        await self.click_verify_button()
+        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_timeout(3000)
+        
+        # Step 2: Click project
+        logger.info("Step 2: Clicking project")
+        await self.click_project_link()
+        await self.page.wait_for_timeout(2000)
+        
+        # Step 3: Click all project - wait to load
+        logger.info("Step 3: Clicking all project and waiting to load")
+        await self.click_all_projects_tab()
+        await self.page.wait_for_timeout(3000)
+        
+        # Step 4: Search project - wait to load
+        logger.info("Step 4: Searching project and waiting to load")
+        await self.search_project(project_name)
+        await self.page.wait_for_timeout(7000)
+        
+        # Step 5: Click project name - wait to load
+        logger.info("Step 5: Clicking project name and waiting to load")
+        await self.click_first_project_link()
+        await self.page.wait_for_load_state("networkidle")
+        await self.page.wait_for_timeout(5000)
+        
+        await self.click_chevron_icon_quote()
+        await self.page.wait_for_timeout(2000)
+        
+        # verify_machine_translated_and_words_count_extract
+        before_mt_count = await self.verify_machine_translated_and_words_count_extract()
+        
+        # Step 6: Click timeline - wait to load network calls
+        logger.info("Step 6: Clicking timeline and waiting for network calls")
+        await self.click_timeline_link()
+        await self.page.wait_for_timeout(3000)
+        await self.page.wait_for_load_state("networkidle")
+        
+        # Step 7: Click de-DE: Enterprise icon - wait to load
+        logger.info("Step 7: Clicking de-DE: Enterprise icon and waiting to load")
+        await self.click_de_de_enterprise_icon()
+        await self.page.wait_for_timeout(2000)
+        
+        # Step 8: Click Copy Edit link and verify modal - wait to load and save MT text value
+        logger.info("Step 8: Clicking Copy Edit link and verifying modal and waiting to load")
+        await self.click_copy_edit_link_and_verify_modal()
+        await self.page.wait_for_timeout(2000)
+        
+        # Step 9: Extract Machine Translated value from modal - wait to load and save MT text value
+        logger.info("Step 9: Extracting Machine Translated value from modal and waiting to load")
+        await self.extract_machine_translated_value_from_modal()
+        await self.page.wait_for_timeout(2000)
+        
+        # step 10 : extract mt value from copy edit pop up
+        logger.info("Step 10: Extracting Machine Translated value from copy edit pop up and waiting to load")
+        copyedit_mt_count = await self.extract_machine_translated_value_from_modal()
+        await self.page.wait_for_timeout(2000)
+        
+        # step 11 : compare before_mt_count and after_mt_count
+        logger.info("Step 11: Comparing before_mt_count and after_mt_count")
+        before_mt_count = int(before_mt_count)
+        copyedit_mt_count = int(copyedit_mt_count)
+        logger.info(f"Before MT count: {before_mt_count}")
+        logger.info(f"Copy Edit MT count: {copyedit_mt_count}")
+        assert before_mt_count > copyedit_mt_count, "MT count is  less than Copy Edit MT count"
+        await self.page.wait_for_timeout(2000)
+        
+        logger.info("Complete MT count verification workflow completed successfully")
+        return True
+        

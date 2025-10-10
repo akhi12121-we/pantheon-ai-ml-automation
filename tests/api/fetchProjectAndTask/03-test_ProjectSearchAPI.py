@@ -30,9 +30,32 @@ class TestProjectSearchAPI:
     
     @pytest.mark.projectcreation
     def test_03_project_search_api(self):
-        """Test fetching projects using platform-project API."""
+        """
+        Test fetching projects using platform-project API.
         
-        # Prepare headers
+        TEST WORKFLOW STEPS:
+        ===================
+        Step 1: Prepare API headers with authentication
+        Step 2: Build full URL with endpoint
+        Step 3: Log request details (URL, params, headers)
+        Step 4: Make GET request with query parameters
+        Step 5: Log response details for debugging
+        Step 6: Generate current date for filename
+        Step 7: Create response directory if needed
+        Step 8: Save response data to JSON file
+        Step 9: Verify response status code is 200
+        Step 10: Verify response is valid JSON object
+        Step 11: Read expected project name from file
+        Step 12: Parse response data and count projects
+        Step 13: Search for expected project in response
+        Step 14: Compare project names and log results
+        Step 15: Verify response structure has 'data' field
+        Step 16: Assert expected project was found
+        
+        Expected Result: Project search API returns projects and finds expected project
+        """
+        
+        # Step 1: Prepare API headers with authentication
         headers = {
             "accept": "*/*",
             "accept-language": "en-GB,en;q=0.9",
@@ -42,48 +65,44 @@ class TestProjectSearchAPI:
             "x-pantheon-auth": config.AUTH_TOKEN_RELAY
         }
         
-        # Build full URL
+        # Step 2: Build full URL with endpoint
         url = f"{self.base_url}{self.endpoint}"
         
-        # Log request details
+        # Step 3: Log request details
         logger.info(f"Request URL: {url}")
         logger.info(f"Query Parameters: {self.query_params}")
         logger.info(f"Headers: {headers}")
         
-        # Make GET request with query parameters
+        # Step 4: Make GET request with query parameters
         response = requests.get(url, params=self.query_params, headers=headers)
         
-        # Log response details for debugging
+        # Step 5: Log response details for debugging
         logger.info(f"Response Status: {response.status_code}")
         logger.info(f"Response Headers: {dict(response.headers)}")
         logger.info(f"Response Text: {response.text}")
         logger.info(f"Request URL: {response.url}")
         
-        # Save response to file with current date
+        # Step 6: Generate current date for filename
         current_date = datetime.now().strftime("%Y%m%d")
         response_file_path = f"data/api/responses/SearchProject-{current_date}.json"
         
-        # Create directory if it doesn't exist
+        # Step 7: Create response directory if needed
         os.makedirs(os.path.dirname(response_file_path), exist_ok=True)
         
-        # Write response data to file
+        # Step 8: Save response data to JSON file
         with open(response_file_path, 'w') as f:
             json.dump(response.json(), f, indent=2)
         
         logger.info(f"Response data saved to: {response_file_path}")
         
-        # Assertions
+        # Step 9: Verify response status code is 200
         assert response.status_code == 200, f"Expected status 200, got {response.status_code}. Response: {response.text}"
         
-        # Verify response is JSON
+        # Step 10: Verify response is valid JSON object
         response_data = response.json()
         assert isinstance(response_data, dict), "Response should be a JSON object"
         
-        # Log response for debugging
-        logger.info(f"Response Status: {response.status_code}")
-        logger.info(f"Response Data: {response_data}")
-        
-        # Read project name from file for comparison
+        # Step 11: Read expected project name from file
         project_name_file = "data/projectname.txt"
         expected_project_name = None
         if os.path.exists(project_name_file):
@@ -93,7 +112,7 @@ class TestProjectSearchAPI:
         else:
             logger.warning("Project name file not found: data/projectname.txt")
         
-        # Verify response structure and compare with expected project
+        # Step 12-13: Parse response data and search for expected project
         if "data" in response_data:
             logger.info(f"Found {len(response_data['data'])} projects in response")
             
@@ -122,7 +141,7 @@ class TestProjectSearchAPI:
                     logger.info(f"   - Billing Reference ID: {billing_ref_id}")
                     break
             
-            # Log comparison results
+            # Step 14: Compare project names and log results
             if found_project:
                 logger.info(f"✅ Project verification successful!")
                 logger.info(f"   Expected: {expected_project_name}")
@@ -139,11 +158,11 @@ class TestProjectSearchAPI:
         else:
             logger.warning("No 'data' field found in response")
         
-        # Verify response has expected structure
+        # Step 15: Verify response structure has 'data' field
         assert "data" in response_data, "Response should contain 'data' field"
         assert isinstance(response_data["data"], list), "Data field should be a list"
         
-        # If we have an expected project name, verify it was found
+        # Step 16: Assert expected project was found
         if expected_project_name:
             assert found_project, f"Expected project '{expected_project_name}' not found in response"
         

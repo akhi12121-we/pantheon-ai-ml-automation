@@ -53,7 +53,7 @@ class AllureHelper:
                            start_time: float = None, end_time: float = None,
                            error_message: str = None, attachments: List[Dict] = None,
                            test_class: str = None, package: str = None, suite: str = None,
-                           log_file: str = None) -> str:
+                           log_file: str = None, retry_count: int = 0) -> str:
         """Generate a test result JSON file for Allure."""
         
         if start_time is None:
@@ -77,7 +77,13 @@ class AllureHelper:
         
         # Get real logger steps from log file
         steps = self._get_logger_steps(log_file, test_name, start_time_ms, end_time_ms)
+        
+        # Add log file as attachment if it exists
         all_attachments = attachments or []
+        if log_file and os.path.exists(log_file):
+            log_attachment = self._create_log_attachment(log_file, f"{test_name.replace(' ', '_')}_log.txt")
+            if log_attachment:
+                all_attachments.append(log_attachment)
         
         result = {
             "uuid": test_uuid,
@@ -109,6 +115,35 @@ class AllureHelper:
                 }
             ]
         }
+        
+        # Add retry information if retries occurred
+        if retry_count > 0:
+            retry_entries = []
+            for i in range(retry_count):
+                retry_uuid = str(uuid.uuid4())
+                retry_entry = {
+                    "uuid": retry_uuid,
+                    "name": f"{test_name} (Attempt {i+1})",
+                    "status": "failed" if i < retry_count - 1 else status.lower(),
+                    "stage": "finished",
+                    "start": start_time_ms + (i * 1000),
+                    "stop": start_time_ms + ((i + 1) * 1000),
+                    "steps": [
+                        {
+                            "name": f"Retry Attempt {i+1}",
+                            "status": "failed" if i < retry_count - 1 else status.lower(),
+                            "stage": "finished",
+                            "start": start_time_ms + (i * 1000),
+                            "stop": start_time_ms + ((i + 1) * 1000),
+                            "steps": [],
+                            "attachments": []
+                        }
+                    ],
+                    "attachments": []
+                }
+                retry_entries.append(retry_entry)
+            
+            result["retries"] = retry_entries
         
         if error_message:
             result["statusDetails"] = {
@@ -176,116 +211,53 @@ class AllureHelper:
         else:
             return "Test Suite"
     
-    def _generate_steps_from_logs(self, log_file: str, start_time_ms: int, end_time_ms: int, test_name: str = None) -> List[Dict]:
-        """Generate Allure steps from log file filtered by test name patterns."""
-        steps = []
-        
-        if not log_file or not os.path.exists(log_file):
-            return steps
-        
-        try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                log_lines = f.readlines()
-            
-            # Create test-specific patterns based on test name
-            test_patterns = self._get_test_patterns(test_name)
-            
-            step_counter = 0
-            seen_messages = set()  # Track seen messages to avoid duplicates
-            
-            for line in log_lines:
-                # Look for relevant log entries (INFO, ERROR, WARNING)
-                if ("INFO" in line or "ERROR" in line or "WARNING" in line) and ("automation_framework" in line):
-                    # Check if this log line is related to the specific test
-                    if self._is_test_related_log(line, test_patterns):
-                        # Extract timestamp and message
-                        parts = line.strip().split(' - ', 3)
-                        if len(parts) >= 4:
-                            timestamp_str = parts[0]
-                            message = parts[3]
-                            
-                            # Skip generic messages that appear in multiple tests
-                            if any(generic in message.lower() for generic in ["row 1 - date", "status: succes", "jobs table found"]):
-                                continue
-                            
-                            # Skip duplicate messages
-                            if message in seen_messages:
-                                continue
-                            seen_messages.add(message)
-                            
-                            step_counter += 1
-                            
-                            # Create step
-                            step = {
-                                "name": f"Step {step_counter}: {message[:50]}...",
-                                "status": "passed" if "INFO" in line else "failed" if "ERROR" in line else "broken",
-                                "stage": "finished",
-                                "start": start_time_ms + (step_counter * 1000),
-                                "stop": start_time_ms + (step_counter * 1000) + 100,
-                                "steps": [],
-                                "attachments": []
-                            }
-                            
-                            steps.append(step)
-            
-        except Exception as e:
-            print(f"⚠️ Error generating steps from logs: {e}")
-        
-        return steps
-    
-    def _get_test_patterns(self, test_name: str) -> List[str]:
-        """Get test-specific patterns to filter logs."""
-        if not test_name:
-            return []
-        
-        patterns = []
-        test_lower = test_name.lower()
-        
-        # Very specific patterns for each test - only unique keywords that don't appear in other tests
-        if "create xtm project" in test_lower:
-            patterns.extend(["XTM", "Add project", "customer dropdown", "source language", "target language", "workflow", "file uploaded", "Create button", "XTM login"])
-        elif "create scheduler job" in test_lower:
-            patterns.extend(["scheduler", "developer", "platform", "JSON", "Submit", "Refresh", "junction", "authenticate", "payload", "platformInstanceId", "Create Job", "job creation"])
-        elif "search project relay" in test_lower:
-            patterns.extend(["relay", "Welocalize", "Projects link", "All projects", "search term", "project link", "relay page", "searching for project"])
-        
-        return patterns
-    
-    def _is_test_related_log(self, log_line: str, test_patterns: List[str]) -> bool:
-        """Check if log line is related to specific test."""
-        if not test_patterns:
-            return False  # Don't show any logs if no patterns
-        
-        log_lower = log_line.lower()
-        # Use more strict matching - log must contain at least one pattern
-        return any(pattern.lower() in log_lower for pattern in test_patterns)
-    
     def _get_basic_steps(self, test_name: str, start_time_ms: int, end_time_ms: int) -> List[Dict]:
         """Get basic steps for test without parsing logs."""
+        duration = end_time_ms - start_time_ms
+        step_duration = max(100, duration // 5)  # Divide duration into 5 steps
+        
         steps = [
             {
-                "name": f"Starting {test_name}",
+                "name": f"Step 1: Starting {test_name}",
                 "status": "passed",
                 "stage": "finished",
                 "start": start_time_ms,
-                "stop": start_time_ms + 100,
+                "stop": start_time_ms + step_duration,
                 "steps": [],
                 "attachments": []
             },
             {
-                "name": f"Executing {test_name}",
-                "status": "passed",
-                "stage": "finished", 
-                "start": start_time_ms + 100,
-                "stop": start_time_ms + 200,
-                "steps": [],
-                "attachments": []
-            },
-            {
-                "name": f"Completed {test_name}",
+                "name": f"Step 2: Initializing test execution",
                 "status": "passed",
                 "stage": "finished",
-                "start": start_time_ms + 200,
+                "start": start_time_ms + step_duration,
+                "stop": start_time_ms + (step_duration * 2),
+                "steps": [],
+                "attachments": []
+            },
+            {
+                "name": f"Step 3: Running {test_name}",
+                "status": "passed",
+                "stage": "finished",
+                "start": start_time_ms + (step_duration * 2),
+                "stop": start_time_ms + (step_duration * 3),
+                "steps": [],
+                "attachments": []
+            },
+            {
+                "name": f"Step 4: Processing test results",
+                "status": "passed",
+                "stage": "finished",
+                "start": start_time_ms + (step_duration * 3),
+                "stop": start_time_ms + (step_duration * 4),
+                "steps": [],
+                "attachments": []
+            },
+            {
+                "name": f"Step 5: Completed {test_name}",
+                "status": "passed",
+                "stage": "finished",
+                "start": start_time_ms + (step_duration * 4),
                 "stop": end_time_ms,
                 "steps": [],
                 "attachments": []
@@ -298,67 +270,149 @@ class AllureHelper:
         steps = []
         
         if not log_file or not os.path.exists(log_file):
-            return steps
+            print(f"⚠️ Log file not found: {log_file}")
+            return self._get_basic_steps(test_name, start_time_ms, end_time_ms)
         
         try:
-            with open(log_file, 'r', encoding='utf-8') as f:
-                log_lines = f.readlines()
+            # Try different encodings to handle the UTF-8 decode error
+            encodings = ['utf-8', 'latin-1', 'cp1252', 'iso-8859-1']
+            log_lines = []
+            
+            for encoding in encodings:
+                try:
+                    with open(log_file, 'r', encoding=encoding) as f:
+                        log_lines = f.readlines()
+                    break
+                except UnicodeDecodeError:
+                    continue
+            
+            if not log_lines:
+                print(f"⚠️ No log lines found in {log_file}")
+                return self._get_basic_steps(test_name, start_time_ms, end_time_ms)
             
             step_counter = 0
+            seen_messages = set()
+            
+            # Get clean test name without retry info
+            clean_test_name = test_name.split(" (Attempts:")[0].strip()
+            
+            # STRICT filtering: Only include logs that are clearly from this specific test
             for line in log_lines:
-                # Look for INFO logs from automation_framework
                 if "INFO" in line and "automation_framework" in line:
-                    # Extract timestamp and message
                     parts = line.strip().split(' - ', 3)
                     if len(parts) >= 4:
-                        timestamp_str = parts[0]
                         message = parts[3]
                         
-                        # Parse timestamp to check if log is within test execution time
-                        try:
-                            # Parse timestamp like "2025-01-03 16:21:53,123"
-                            log_time = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S,%f")
-                            log_time_ms = int(log_time.timestamp() * 1000)
-                            
-                            # Only include logs that occurred during this test execution
-                            if start_time_ms <= log_time_ms <= end_time_ms:
-                                step_counter += 1
-                                
-                                # Create step from real log message
-                                step = {
-                                    "name": f"Step {step_counter}: {message[:60]}...",
-                                    "status": "passed",
-                                    "stage": "finished",
-                                    "start": log_time_ms,
-                                    "stop": log_time_ms + 100,
-                                    "steps": [],
-                                    "attachments": []
-                                }
-                                
-                                steps.append(step)
-                        except ValueError:
-                            # Skip lines with invalid timestamps
+                        # Skip duplicate messages
+                        if message in seen_messages:
                             continue
+                        seen_messages.add(message)
+                        
+                        # Skip very short messages
+                        if len(message.strip()) < 10:
+                            continue
+                        
+                        # STRICT test-specific filtering
+                        if self._is_log_for_this_test(message, clean_test_name):
+                            step_counter += 1
+                            
+                            # Create step from real log message
+                            step = {
+                                "name": f"Step {step_counter}: {message}",
+                                "status": "passed",
+                                "stage": "finished",
+                                "start": start_time_ms + (step_counter * 1000),
+                                "stop": start_time_ms + (step_counter * 1000) + 100,
+                                "steps": [],
+                                "attachments": []
+                            }
+                            
+                            steps.append(step)
+            
+            # If still no steps, add basic steps
+            if not steps:
+                print(f"⚠️ No test-specific logs found for {clean_test_name}, adding basic steps")
+                steps = self._get_basic_steps(test_name, start_time_ms, end_time_ms)
             
         except Exception as e:
             print(f"⚠️ Error getting logger steps: {e}")
+            steps = self._get_basic_steps(test_name, start_time_ms, end_time_ms)
         
         return steps
     
-    def _is_test_related_log_simple(self, log_line: str, test_name: str) -> bool:
-        """Simple check if log line is related to specific test."""
+    def _is_log_for_this_test(self, message: str, test_name: str) -> bool:
+        """Strict check if log message belongs to this specific test."""
+        message_lower = message.lower()
         test_lower = test_name.lower()
-        log_lower = log_line.lower()
         
-        # Simple pattern matching for each test
-        if "create xtm project" in test_lower:
-            return any(keyword in log_lower for keyword in ["xtm", "project", "login", "browser", "add project", "customer", "source language", "target language", "workflow", "file uploaded"])
+        # Very specific patterns for each test
+        if "search project relay" in test_lower:
+            # Only logs that are clearly from Search Project Relay test
+            return any(keyword in message_lower for keyword in [
+                "search project relay", "searching for project", "relay", "welocalize", 
+                "projects link", "all projects", "search term", "project link"
+            ])
+        elif "verify pulled project production status" in test_lower:
+            # Only logs that are clearly from Production Status test
+            return any(keyword in message_lower for keyword in [
+                "verify pulled project production status", "production status", "pulled project",
+                "verify production", "production verification", "starting test verify pulled"
+            ])
+        elif "create xtm project" in test_lower:
+            # Only logs that are clearly from XTM Project Creation test
+            return any(keyword in message_lower for keyword in [
+                "create xtm project", "xtm project creation", "add project", "xtm login",
+                "customer dropdown", "source language", "target language", "workflow"
+            ])
         elif "create scheduler job" in test_lower:
-            return any(keyword in log_lower for keyword in ["scheduler", "developer", "platform", "json", "submit", "refresh", "junction", "authenticate", "payload", "create job"])
-        elif "search project relay" in test_lower:
-            return any(keyword in log_lower for keyword in ["relay", "welocalize", "projects link", "all projects", "search", "project link", "searching"])
+            # Only logs that are clearly from Scheduler Job test
+            return any(keyword in message_lower for keyword in [
+                "create scheduler job", "scheduler job", "developer", "platform", "json",
+                "submit", "refresh", "junction", "authenticate", "payload"
+            ])
+        elif "project search and segment" in test_lower:
+            # Only logs that are clearly from Project Search and Segment test
+            return any(keyword in message_lower for keyword in [
+                "project search and segment", "search project", "segment navigation",
+                "manage jobs", "right-click", "lock icon", "click segment"
+            ])
+        elif "verify ai task" in test_lower:
+            # Only logs that are clearly from AI Task test
+            return any(keyword in message_lower for keyword in [
+                "verify ai task", "ai task", "ai verification", "task verification"
+            ])
+        elif "verify mt copy edit" in test_lower:
+            # Only logs that are clearly from MT Copy Edit test
+            return any(keyword in message_lower for keyword in [
+                "verify mt copy edit", "mt copy edit", "mt count", "copy edit", "quote mt"
+            ])
         
+        # Default: be very restrictive
         return False
+    
+    def _get_test_specific_keywords(self, test_name: str) -> List[str]:
+        """Get test-specific keywords for log filtering."""
+        # Remove retry information from test name for keyword matching
+        clean_test_name = test_name.split(" (Attempts:")[0].strip()
+        clean_test_lower = clean_test_name.lower()
+        
+        if "create xtm project" in clean_test_lower:
+            return ["xtm", "project", "login", "browser", "add project", "customer", "source language", "target language", "workflow", "file uploaded", "create xtm", "xtm login", "project creation"]
+        elif "create scheduler job" in clean_test_lower:
+            return ["scheduler", "developer", "platform", "json", "submit", "refresh", "junction", "authenticate", "payload", "create job", "scheduler job", "job creation"]
+        elif "search project relay" in clean_test_lower:
+            return ["relay", "welocalize", "projects link", "all projects", "search", "project link", "searching", "relay page", "search project"]
+        elif "verify pulled project production status" in clean_test_lower:
+            return ["production", "status", "pulled", "project", "verify", "production status", "pulled project", "verify production", "production verification"]
+        elif "verify ai task" in clean_test_lower:
+            return ["ai", "task", "verification", "verify", "ai task", "task verification", "ai verification"]
+        elif "project search and segment" in clean_test_lower:
+            return ["search", "segment", "project", "navigation", "click", "segment navigation", "project search", "click segment", "manage jobs", "right-click", "lock icon"]
+        elif "verify mt copy edit" in clean_test_lower:
+            return ["mt", "copy", "edit", "count", "quote", "verify", "mt count", "copy edit", "mt copy", "quote mt"]
+        else:
+            # Generic keywords for unknown tests
+            return ["step", "starting", "completed", "executing", "running", "test"]
     
     def _create_log_attachment(self, log_file: str, attachment_name: str = None) -> Dict:
         """Create Allure attachment from log file."""

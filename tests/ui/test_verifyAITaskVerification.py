@@ -12,6 +12,7 @@ from utils.logger import logger
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from utils.browser_client import browser_client
+from utils.data_parser import data_parser
 from pages.relayPage import RelayPage
 
 @pytest_asyncio.fixture(scope="function")
@@ -21,26 +22,14 @@ async def browser_setup():
     yield
     await browser_client.close_browser()
 
-def read_project_name():
-    """Read project name from projectname.txt file."""
-    try:
-        project_name_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'projectname.txt')
-        with open(project_name_path, 'r', encoding='utf-8') as file:
-            project_name = file.read().strip()
-            logger.info(f"Read project name from file: {project_name}")
-            return project_name
-    except Exception as e:
-        logger.error(f"Failed to read project name from file: {e}")
-        raise
-
 @pytest.mark.asyncio
 async def test_verify_ai_task_completion(browser_setup):
     """Test verifying all AI-related task completions."""
     logger.info("Starting Test Verify AI Task Completion")
     
     try:
-        # Read project name from file
-        project_name = read_project_name()
+        # Read project name from file using utility function
+        project_name = data_parser.read_project_name()
         logger.info(f"Using project name: {project_name}")
         
         # Create relay page object

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test Pulled Project With Status Production - Verify production status for a pulled project.
+Test Verify MT Copy Edit Count with Quote MT - Verify MT count is less than Copy Edit MT count.
 """
 import pytest
 import pytest_asyncio
@@ -23,9 +23,9 @@ async def browser_setup():
     await browser_client.close_browser()
 
 @pytest.mark.asyncio
-async def test_verify_pulled_project_production_status(browser_setup):
-    """Test verifying production status for a pulled project."""
-    logger.info("Starting Test Verify Pulled Project Production Status")
+async def test_verify_mt_count_less_than_copy_edit_mt_count(browser_setup):
+    """Test verifying MT count is less than Copy Edit MT count."""
+    logger.info("Starting Test Verify MT Copy Edit Count with Quote MT")
     
     try:
         # Read project name from file using utility function
@@ -35,15 +35,15 @@ async def test_verify_pulled_project_production_status(browser_setup):
         # Create relay page object
         relay_page = RelayPage(browser_client.page)
         
-        # Call the verify_pulledProject_is_ProductionStatus function
-        success = await relay_page.verify_pulledProject_is_ProductionStatus(
-            search_term=project_name
+        # Call the verify_mt_count_less_then_copyEdit_MT_count function
+        success = await relay_page.verify_mt_count_less_then_copyEdit_MT_count(
+            project_name=project_name
         )
         
         # Assert the result
-        assert success, f"Test Verify Pulled Project Production Status failed - verify_pulledProject_is_ProductionStatus returned False for project: {project_name}"
-        logger.info("Test Verify Pulled Project Production Status completed successfully!")
+        assert success, f"Test Verify MT Copy Edit Count with Quote MT failed - verify_mt_count_less_then_copyEdit_MT_count returned False for project: {project_name}"
+        logger.info("Test Verify MT Copy Edit Count with Quote MT completed successfully!")
         
     except Exception as e:
-        logger.error(f"Test Verify Pulled Project Production Status failed with exception: {e}")
+        logger.error(f"Test Verify MT Copy Edit Count with Quote MT failed with exception: {e}")
         raise

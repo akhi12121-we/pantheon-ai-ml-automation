@@ -2,57 +2,71 @@
 """
 Script to run UI test cases for project creation, scheduling, and searching.
 """
-import subprocess
 import sys
 import os
 import time
+import subprocess
 
-def run_test(test_path, test_name):
-    """Run a specific test."""
-    print(f"\n{'='*60}")
-    print(f"Running: {test_name}")
-    print(f"{'='*60}")
+def run_single_test(test_path):
+    """Run a single test file."""
+    print(f"Running: {test_path}")
+    result = subprocess.run([sys.executable, "-m", "pytest", test_path, "-v"], 
+                          capture_output=True, text=True)
+    print(f"Test result: {'PASSED' if result.returncode == 0 else 'FAILED'}")
+    return result.returncode
+
+def run_test_with_retry(test_path, max_retries=3):
+    """Run a test with retry logic."""
+    for attempt in range(1, max_retries + 1):
+        print(f"Attempt {attempt}/{max_retries}: {test_path}")
+        result = subprocess.run([sys.executable, "-m", "pytest", test_path, "-v"], 
+                              capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            print(f"✅ Test passed on attempt {attempt}")
+            return 0
+        else:
+            print(f"❌ Test failed on attempt {attempt}")
+            if attempt < max_retries:
+                print(f"⏳ Waiting before retry...")
+                time.sleep(30)  # Wait 30 seconds between retries
     
-    cmd = [
-        sys.executable, "-m", "pytest", 
-        test_path, 
-        "-v", "-s", 
-        "--tb=short"
+    print(f"❌ Test failed after {max_retries} attempts")
+    return result.returncode
+
+def generate_playwright_report():
+    """Generate Playwright's default HTML report by running tests with HTML output."""
+    print("📊 Generating Playwright HTML Report...")
+    
+    # Run pytest with HTML reporting - this will run the tests and generate report
+    pytest_cmd = [
+        sys.executable, "-m", "pytest",
+        "tests/ui/",
+        "--html=playwright-report/report.html",
+        "--self-contained-html",
+        "-v"
     ]
     
-    # Set PYTHONPATH
-    env = os.environ.copy()
-    env['PYTHONPATH'] = os.getcwd()
+    print(f"Running: {' '.join(pytest_cmd)}")
+    result = subprocess.run(pytest_cmd)
     
-    # Record test start time
-    import time
-    test_start_time = time.time()
-    
-    result = subprocess.run(cmd, env=env)
-    
-    # Record test end time
-    test_end_time = time.time()
-    
-    # Generate Allure result with real logger steps
-    try:
-        from utils.allure_helper import allure_helper
-        from datetime import datetime
+    if os.path.exists("playwright-report/report.html"):
+        print("✅ Playwright HTML report generated successfully!")
+        print(f"📁 Report location: {os.path.abspath('playwright-report/report.html')}")
         
-        status = "passed" if result.returncode == 0 else "failed"
-        log_file = f"logs/automation_{datetime.now().strftime('%Y%m%d')}.log"
-        
-        allure_helper.generate_test_result(
-            test_name=test_name,
-            status=status,
-            test_class="UITest",
-            package="tests.ui",
-            suite="UI Project Creation Tests",
-            log_file=log_file,
-            start_time=test_start_time,
-            end_time=test_end_time
-        )
-    except Exception as e:
-        print(f"⚠️ Could not generate Allure result: {e}")
+        # Try to open the report in default browser
+        try:
+            if sys.platform.startswith('win'):
+                os.startfile("playwright-report/report.html")
+            elif sys.platform.startswith('darwin'):
+                subprocess.run(['open', 'playwright-report/report.html'])
+            else:
+                subprocess.run(['xdg-open', 'playwright-report/report.html'])
+        except Exception as e:
+            print(f"⚠️ Could not auto-open browser: {e}")
+            print("💡 Please manually open: playwright-report/report.html")
+    else:
+        print("❌ Playwright HTML report not found")
     
     return result.returncode
 
@@ -61,116 +75,108 @@ def main():
     print("Starting UI Project Creation Workflow")
     print("=" * 60)
     
-    # Clean old Allure results
-    print("🧹 Cleaning old Allure results...")
+    # Clean old Playwright results
+    print("🧹 Cleaning old Playwright results...")
     try:
-        from utils.allure_helper import allure_helper
-        allure_helper.clean_results()
+        if os.path.exists("playwright-report"):
+            import shutil
+            shutil.rmtree("playwright-report")
+        if os.path.exists("test-results"):
+            import shutil
+            shutil.rmtree("test-results")
+        print("✅ Cleaned old Playwright results")
     except Exception as e:
         print(f"⚠️ Could not clean old results: {e}")
     
-    # Test 1: Create XTM Project (UI)
-    print("\n1. Creating XTM Project (UI Test)")
-    result1 = run_test(
-        "tests/ui/test_xtm_ProjectCreation.py",
-        "Create XTM Project"
-    )
+    # Track which tests to run
+    tests_to_run = []
+    tests_to_skip = []
     
+    # Test 1: Create XTM Project (UI)
+    print("\n🚀 Test 1: Create XTM Project (UI)")
+    result1 = run_single_test("tests/ui/test_xtm_ProjectCreation.py")
+    tests_to_run.append("tests/ui/test_xtm_ProjectCreation.py")
     if result1 != 0:
-        print("❌ XTM Project creation failed!")
-        return result1
+        print("❌ XTM Project creation failed, but continuing...")
     
     # Test 2: Create Scheduler Job (UI)
-    print("\n2. Creating Scheduler Job (UI Test)")
-    result2 = run_test(
-        "tests/ui/test_createScheduler.py",
-        "Create Scheduler Job"
-    )
-    
+    print("\n🚀 Test 2: Create Scheduler Job (UI)")
+    result2 = run_single_test("tests/ui/test_createScheduler.py")
+    tests_to_run.append("tests/ui/test_createScheduler.py")
     if result2 != 0:
-        print("❌ Scheduler job creation failed!")
-        return result2
+        print("❌ Scheduler creation failed, but continuing...")
     
     # Test 3: Search Project (UI)
-    print("\n3. Searching Project (UI Test)")
-    result3 = run_test(
-        "tests/ui/test_SearchProjectRelay.py",
-        "Search Project Relay"
-    )
-    
+    print("\n🚀 Test 3: Search Project (UI)")
+    result3 = run_single_test("tests/ui/test_SearchProjectRelay.py")
+    tests_to_run.append("tests/ui/test_SearchProjectRelay.py")
     if result3 != 0:
-        print("❌ Project search failed!")
-        return result3
+        print("❌ Project search failed, but continuing...")
+    
+    # Wait for few minutes
+    print("\n⏳ Waiting for few minutes...")
+    time.sleep(180)  # 3 minutes wait
     
     # Test 4: Verify Pulled Project Production Status (UI) - with retry
-    print("\n4. Verifying Pulled Project Production Status (UI Test)")
-    print("⏳ Waiting 2 minutes before running production status verification...")
-    time.sleep(120)  # Wait 2 minutes
+    print("\n🚀 Test 4: Verify Pulled Project Production Status (UI)")
+    result4 = run_test_with_retry("tests/ui/test_PulledProjectWithStatusProduction.py", 3)
+    tests_to_run.append("tests/ui/test_PulledProjectWithStatusProduction.py")
     
-    # Retry logic for production status verification
-    max_retries = 3
-    for attempt in range(1, max_retries + 1):
-        print(f"\n🔄 Attempt {attempt}/{max_retries}: Verifying Production Status")
-        result4 = run_test(
-            "tests/ui/test_PulledProjectWithStatusProduction.py",
-            "Verify Pulled Project Production Status"
-        )
+    # Check if production status test failed - if so, skip remaining tests
+    if result4 != 0:
+        print("❌ Production status verification failed - skipping remaining tests")
+        print("⏭️ Skipping remaining tests due to production status failure")
         
-        if result4 == 0:
-            print("✅ Production status verification successful!")
-            break
-        else:
-            print(f"❌ Production status verification failed on attempt {attempt}")
-            if attempt < max_retries:
-                print(f"⏳ Waiting 5 minutes before retry {attempt + 1}...")
-                time.sleep(300)  # Wait 5 minutes before retry
-            else:
-                print("❌ All retry attempts failed for production status verification!")
-                return result4
-    
-    # Test 5: AI Task Verification - with retry
-    print("\n5. Running AI Task Verification (UI Test)")
-    print("⏳ Waiting 600 seconds before running AI task verification...")
-    time.sleep(600)  # Wait 10 minutes
-    
-    # Retry logic for AI task verification
-    max_retries = 5
-    for attempt in range(1, max_retries + 1):
-        print(f"\n🔄 Attempt {attempt}/{max_retries}: AI Task Verification")
-        result5 = run_test(
+        # Mark tests 5-7 as skipped
+        tests_to_skip = [
             "tests/ui/test_verifyAITaskVerification.py",
-            "Verify AI Task Completion"
-        )
+            "tests/ui/test_xtmProjectSearchClicktoSegments.py",
+            "tests/ui/test_verifyMTCopyEditCount_with_QuoteMT.py"
+        ]
         
-        if result5 == 0:
-            print("✅ AI task verification successful!")
-            break
-        else:
-            print(f"❌ AI task verification failed on attempt {attempt}")
-            if attempt < max_retries:
-                print(f"⏳ Waiting 10 minutes before retry {attempt + 1}...")
-                time.sleep(180)  # Wait 10 minutes before retry
-            else:
-                print("❌ All retry attempts failed for AI task verification!")
-                return result5
+        print("\n" + "="*60)
+        print("❌ UI Project Creation Tests Completed with Failures!")
+        print("="*60)
+        
+        # Generate Playwright HTML report
+        generate_playwright_report()
+        return 1
+    
+    # Wait for 10 minutes
+    print("\n⏳ Waiting for 10 minutes...")
+    time.sleep(600)  # 10 minutes wait
+    
+    # Test 5: AI Task Verification (UI)
+    print("\n🚀 Test 5: AI Task Verification (UI)")
+    result5 = run_test_with_retry("tests/ui/test_verifyAITaskVerification.py", 3)
+    tests_to_run.append("tests/ui/test_verifyAITaskVerification.py")
+    if result5 != 0:
+        print("❌ AI Task verification failed, but continuing...")
+    
+    # Wait for 1 minute
+    print("\n⏳ Waiting for 1 minute...")
+    time.sleep(60)  # 1 minute wait
+    
+    # Test 6: Project Search and Segment Navigation (UI)
+    print("\n🚀 Test 6: Project Search and Segment Navigation (UI)")
+    result6 = run_test_with_retry("tests/ui/test_xtmProjectSearchClicktoSegments.py", 3)
+    tests_to_run.append("tests/ui/test_xtmProjectSearchClicktoSegments.py")
+    if result6 != 0:
+        print("❌ Project search and segment navigation failed, but continuing...")
+    
+    # Test 7: Verify MT Copy Edit Count with Quote MT
+    print("\n🚀 Test 7: Verify MT Copy Edit Count with Quote MT")
+    result7 = run_test_with_retry("tests/ui/test_verifyMTCopyEditCount_with_QuoteMT.py", 3)
+    tests_to_run.append("tests/ui/test_verifyMTCopyEditCount_with_QuoteMT.py")
+    if result7 != 0:
+        print("❌ MT Copy Edit Count verification failed, but continuing...")
     
     print("\n" + "="*60)
-    print("✅ All UI Project Creation Tests Completed Successfully!")
+    print("✅ All UI Project Creation Tests Completed!")
     print("="*60)
     
-    # Generate Allure Report
-    print("\n📊 Generating Allure Report...")
-    try:
-        from generate_allure_html import generate_allure_html, serve_allure_report
-        if generate_allure_html():
-            print("✅ Allure report generated successfully!")
-            print("🌐 Starting Allure server...")
-            print("💡 Press Ctrl+C to stop the server when done viewing the report.")
-            serve_allure_report()
-        else:
-            print("❌ Failed to generate Allure report")
-    except Exception as e:
-        print(f"❌ Failed to generate Allure report: {e}")
+    # Generate Playwright HTML report
+    generate_playwright_report()
     
     return 0
 

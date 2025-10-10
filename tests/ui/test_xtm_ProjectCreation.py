@@ -25,14 +25,13 @@ async def browser_setup():
 
 @pytest.mark.projectcreation
 @pytest.mark.asyncio
-@pytest.mark.flaky(reruns=3, reruns_delay=30)  # 3 retries with 5-minute delay
 async def test_01_create_xtm_project(browser_setup):
     """Test creating a new XTM project."""
     # Load credentials and project data from config
     username = get_config_value("credentials", "username", "xtm_data.ini")
     password = get_config_value("credentials", "password", "xtm_data.ini")
     project_name = get_config_value("xtm_project_data", "project_name", "xtm_data.ini") + " " + datetime.now().strftime("%Y%m%d_%H%M%S")
-    file_path = get_config_value("xtm_project_data", "file_path", "xtm_data.ini")
+    file_path = get_config_value("xtm_project_data", "file_path_2", "xtm_data.ini")
     logger.info(f"Creating project: {project_name}")
     logger.info(f"File path: {file_path}")
     # Create page object

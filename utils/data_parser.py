@@ -4,12 +4,18 @@ Generic data parser utility for reading and writing various file types.
 """
 import json
 import os
-import yaml
 import csv
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Union
 from config.settings import config
 from utils.logger import logger
+
+# Optional yaml import - only import if available
+try:
+    import yaml
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
 
 class DataParser:
     """Generic utility class for reading and writing various file types."""
@@ -157,6 +163,10 @@ class DataParser:
     # YAML Operations
     def read_yaml(self, *path_parts: str, resolve_vars: bool = True) -> Union[Dict, List, None]:
         """Read YAML file."""
+        if not YAML_AVAILABLE:
+            logger.error("YAML module not available. Install PyYAML to use YAML functionality.")
+            return None
+            
         file_path = self._get_file_path(*path_parts)
         
         if str(file_path) in self.cache:
@@ -181,6 +191,10 @@ class DataParser:
     
     def write_yaml(self, data: Union[Dict, List], *path_parts: str) -> bool:
         """Write data to YAML file."""
+        if not YAML_AVAILABLE:
+            logger.error("YAML module not available. Install PyYAML to use YAML functionality.")
+            return False
+            
         file_path = self._get_file_path(*path_parts)
         
         try:
@@ -284,6 +298,20 @@ class DataParser:
     def get_cache_info(self) -> Dict[str, str]:
         """Get cache information."""
         return {str(path): type(data).__name__ for path, data in self.cache.items()}
+    
+    def read_project_name(self) -> str:
+        """Read project name from projectname.txt file."""
+        try:
+            project_name = self.read_file("projectname.txt")
+            if project_name:
+                logger.info(f"Read project name from file: {project_name.strip()}")
+                return project_name.strip()
+            else:
+                logger.error("Project name file is empty")
+                return ""
+        except Exception as e:
+            logger.error(f"Failed to read project name from file: {e}")
+            return ""
 
 # Global data parser instance
 data_parser = DataParser()
