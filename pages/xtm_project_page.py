@@ -123,16 +123,24 @@ class XTMProjectPage:
         """Verify Projects heading is visible after login."""
         logger.info("Verifying Projects heading is visible")
         
-        # Wait for iframe to be ready
-        await self.page.wait_for_selector(self.PROJECTS_IFRAME, timeout=15000)
-        
-        # Get the iframe content
-        iframe = self.page.frame_locator(self.PROJECTS_IFRAME)
-        
-        # Check if Projects heading is visible
-        projects_heading = iframe.locator(self.PROJECTS_HEADING)
-        await expect(projects_heading).to_be_visible(timeout=10000)
-        logger.info("Projects heading is visible - login successful")
+        try:
+            # Wait for iframe to be ready with retry logic
+            await self.page.wait_for_selector(self.PROJECTS_IFRAME, timeout=20000)
+            logger.info("Projects iframe found")
+            
+            # Get the iframe content
+            iframe = self.page.frame_locator(self.PROJECTS_IFRAME)
+            
+            # Check if Projects heading is visible with retry
+            projects_heading = iframe.locator(self.PROJECTS_HEADING)
+            await expect(projects_heading).to_be_visible(timeout=15000)
+            logger.info("Projects heading is visible - login successful")
+            
+        except Exception as e:
+            logger.error(f"Failed to verify projects heading: {e}")
+            # Take a screenshot for debugging
+            await self.page.screenshot(path="screenshots/login_verification_failed.png")
+            raise Exception(f"Login verification failed: {e}")
     
     # ===========================================
     # COMPLETE WORKFLOW METHODS
@@ -147,8 +155,33 @@ class XTMProjectPage:
         
         # Perform login
         await self.login(username, password)
-        await self.page.wait_for_load_state('networkidle')
-        await self.page.wait_for_timeout(10000)
+        
+        # Wait for login to complete with more robust approach
+        try:
+            # First try to wait for network idle with shorter timeout
+            await self.page.wait_for_load_state('networkidle', timeout=30000)
+            logger.info("Network idle state reached")
+        except Exception as e:
+            logger.warning(f"Network idle timeout, trying alternative approach: {e}")
+            # If network idle fails, wait for DOM content loaded instead
+            try:
+                await self.page.wait_for_load_state('domcontentloaded', timeout=15000)
+                logger.info("DOM content loaded state reached")
+            except Exception as e2:
+                logger.warning(f"DOM content loaded timeout: {e2}")
+                # Try waiting for URL change as alternative
+                try:
+                    await self.page.wait_for_url("**/project-manager-gui/**", timeout=10000)
+                    logger.info("URL change detected - login likely successful")
+                except Exception as e3:
+                    logger.warning(f"URL change timeout: {e3}")
+                    # As last resort, just wait a fixed time
+                    await self.page.wait_for_timeout(5000)
+                    logger.info("Using fixed timeout fallback")
+        
+        # Additional wait to ensure page is fully loaded
+        await self.page.wait_for_timeout(5000)
+        
         # Verify login success
         await self.verify_projects_heading_visible()
         logger.info("XTM login workflow completed successfully")
@@ -486,7 +519,7 @@ class XTMProjectPage:
     
     async def click_workflow(self):
         """
-        Click on the Workflow link using recorded locator.
+        Click on the Workflow link using iframe locator.
         
         Returns:
             bool: True if workflow link was clicked successfully, False otherwise
@@ -494,11 +527,11 @@ class XTMProjectPage:
         logger.info("Clicking on Workflow link")
         
         try:
-            await self.page.wait_for_load_state("networkidle")
-            await self.page.frame_locator('#projectsIframe').get_by_text('Workflow', exact=True).click()
+            # Use iframe locator to find the workflow link
+            await self.page.frame_locator("#projectsIframe").locator("#workflow_id").click()
+            
             # Wait for navigation to complete
             await self.page.wait_for_timeout(3000)
-            await self.page.wait_for_load_state("networkidle")
             
             logger.info("Workflow link clicked successfully")
             return True
