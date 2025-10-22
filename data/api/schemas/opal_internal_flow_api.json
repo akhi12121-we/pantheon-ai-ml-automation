@@ -1,0 +1,1720 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+      "title": "Internal Opal API",
+      "description": "A API service for Opal operations like project management, retrieval of ML processed data, etc.",
+      "version": "1.0.0"
+    },
+    "servers": [
+      {
+        "url": "/internal"
+      }
+    ],
+    "paths": {
+      "/v1/auth/token": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Create authentication token",
+          "description": "This endpoint is used to create both an authentication token (expires in 1 day) and a refresh token (never expires)\nfor the specified customer. It validates that the user doesn't already have an active token. Only one token is allowed per customer.",
+          "operationId": "create_token_v1_auth_token_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenCreateRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TokenResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "User already has an active authentication token",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          },
+          "security": [
+            {
+              "APIKeyHeader": []
+            }
+          ]
+        }
+      },
+      "/v1/auth/token/refresh": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Refresh authentication token",
+          "description": "This endpoint is used to refresh an authentication token using a valid refresh token.",
+          "operationId": "refresh_token_v1_auth_token_refresh_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenRefreshRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TokenRefreshResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Unprocessable Entity",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          },
+          "security": [
+            {
+              "APIKeyHeader": []
+            }
+          ]
+        }
+      },
+      "/v1/auth/token/revoke": {
+        "post": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Revoke authentication token",
+          "description": "This endpoint is used to revoke either an auth token or refresh token. If revoking an auth token,\nalso revokes its associated refresh token.",
+          "operationId": "revoke_token_v1_auth_token_revoke_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenRevokeRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "additionalProperties": true,
+                    "type": "object",
+                    "title": "Response Revoke Token V1 Auth Token Revoke Post"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Unprocessable Entity",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          },
+          "security": [
+            {
+              "APIKeyHeader": []
+            }
+          ]
+        }
+      },
+      "/v1/auth/token/info": {
+        "get": {
+          "tags": [
+            "Authentication"
+          ],
+          "summary": "Get token information",
+          "description": "This endpoint is used to get token information.",
+          "operationId": "get_token_info_v1_auth_token_info_get",
+          "security": [
+            {
+              "APIKeyHeader": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "token",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "string",
+                "title": "Token"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/TokenInfoResponse"
+                  }
+                }
+              }
+            },
+            "401": {
+              "description": "Unauthorized",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Unprocessable Entity",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/v1/projects": {
+        "post": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Create a new project",
+          "description": "Starts a new Opal project workflow. There will be an id in the response which represents\nthe Opal project and can be used in other endpoints, e.g. Get Job Deatails, Cancel Project, etc.",
+          "operationId": "create_project_v1_projects_post",
+          "requestBody": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectCreateRequest"
+                }
+              }
+            },
+            "required": true
+          },
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ProjectResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Project already exists",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          },
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ]
+        }
+      },
+      "/v1/projects/{project_id}": {
+        "get": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Get project details",
+          "description": "Returns information about an existing Opal project if one exists. Otherwise, returns 404.",
+          "operationId": "get_project_details_v1_projects__project_id__get",
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "project_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create Project endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "Project Id"
+              },
+              "description": "The ID as returned from the Create Project endpoint"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ProjectDetailsWithFilesResponse"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Customer does not own project",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Project not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/v1/projects/{project_id}/cancel": {
+        "post": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Cancel a project",
+          "description": "If the project is in either the created or started state, then the project moves to the canceled state and all processing will be stopped.",
+          "operationId": "cancel_project_v1_projects__project_id__cancel_post",
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "project_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create Project endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "Project Id"
+              },
+              "description": "The ID as returned from the Create Project endpoint"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ProjectResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Project is not in the started state",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Customer does not own project",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Project not found/Project jobs not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/v1/projects/{project_id}/complete": {
+        "post": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Complete a project",
+          "description": "This endpoint is used to mark the project as final. It will also create final file rows in the ProjectFiles table from input files.",
+          "operationId": "complete_project_v1_projects__project_id__complete_post",
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "project_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create Project endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "Project Id"
+              },
+              "description": "The ID as returned from the Create Project endpoint"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/UploadFileResponse"
+                    },
+                    "title": "Response Complete Project V1 Projects  Project Id  Complete Post"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "Project is not in the started state",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Customer does not own project",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Project not found/Input project files not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/v1/projects/{project_id}/files": {
+        "post": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Upload a file to a project",
+          "description": "This endpoint is used to upload a file to a project. It will return a presigned URL for uploading a file to a project.",
+          "operationId": "upload_file_to_project_v1_projects__project_id__files_post",
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "project_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create Project endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "Project Id"
+              },
+              "description": "The ID as returned from the Create Project endpoint"
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectFileCreateRequest"
+                }
+              }
+            }
+          },
+          "responses": {
+            "201": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UploadFileResponse"
+                  }
+                }
+              }
+            },
+            "400": {
+              "description": "File type not supported",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Customer does not own project",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Project not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/v1/projects/{project_id}/start": {
+        "post": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Start a project",
+          "description": "This endpoint is used to start a project. It will start the project workflow and return a 204 status code.",
+          "operationId": "start_project_v1_projects__project_id__start_post",
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "project_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create Project endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "Project Id"
+              },
+              "description": "The ID as returned from the Create Project endpoint"
+            }
+          ],
+          "responses": {
+            "204": {
+              "description": "Successful Response"
+            },
+            "400": {
+              "description": "Project is not in the created state / Input project files not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Customer does not own project",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Project not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      },
+      "/v1/projects/{project_id}/files/{file_id}/re-upload": {
+        "post": {
+          "tags": [
+            "Projects"
+          ],
+          "summary": "Re-upload a file to a project",
+          "description": "This endpoint is used to generate a presigned URL for re-uploading a file to a project.",
+          "operationId": "get_project_file_re_upload_url_v1_projects__project_id__files__file_id__re_upload_post",
+          "security": [
+            {
+              "HTTPBearer": []
+            }
+          ],
+          "parameters": [
+            {
+              "name": "project_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create Project endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "Project Id"
+              },
+              "description": "The ID as returned from the Create Project endpoint"
+            },
+            {
+              "name": "file_id",
+              "in": "path",
+              "required": true,
+              "schema": {
+                "type": "integer",
+                "description": "The ID as returned from the Create File endpoint",
+                "examples": [
+                  123
+                ],
+                "title": "File Id"
+              },
+              "description": "The ID as returned from the Create File endpoint"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UploadFileResponse"
+                  }
+                }
+              }
+            },
+            "403": {
+              "description": "Customer does not own project",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "404": {
+              "description": "Project not found",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            },
+            "422": {
+              "description": "Validation Error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/HTTPValidationError"
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Internal server error"
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "DownloadFileResponse": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name",
+              "description": "The name of the file.",
+              "examples": [
+                "file.txt"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "input",
+                "output",
+                "final"
+              ],
+              "title": "Type",
+              "description": "The type of the file.",
+              "examples": [
+                "input"
+              ]
+            },
+            "source_locale": {
+              "type": "string",
+              "title": "Source Locale",
+              "description": "The source locale of the file.",
+              "examples": [
+                "en-US"
+              ]
+            },
+            "target_locale": {
+              "type": "string",
+              "title": "Target Locale",
+              "description": "The target locale of the file.",
+              "examples": [
+                "fr-FR"
+              ]
+            },
+            "id": {
+              "type": "integer",
+              "title": "Id",
+              "description": "The ID of the file.",
+              "examples": [
+                123
+              ]
+            },
+            "project_id": {
+              "type": "integer",
+              "title": "Project Id",
+              "description": "The ID of the project.",
+              "examples": [
+                123
+              ]
+            },
+            "job_id": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id",
+              "description": "The ID of the job.",
+              "examples": [
+                123
+              ]
+            },
+            "checksum": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Checksum",
+              "description": "The checksum of the file.",
+              "examples": [
+                "1234567890"
+              ]
+            },
+            "download_url": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 2083,
+                  "minLength": 1,
+                  "format": "uri"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Download Url",
+              "description": "The URL to download the file.",
+              "default": "",
+              "examples": [
+                "https://s3.amazonaws.com/opal-downloads/project-1/input"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "name",
+            "type",
+            "source_locale",
+            "target_locale",
+            "id",
+            "project_id",
+            "job_id",
+            "checksum"
+          ],
+          "title": "DownloadFileResponse",
+          "description": "Response model for project file download. Presigned URL for downloading the file from S3."
+        },
+        "ErrorResponse": {
+          "properties": {
+            "detail": {
+              "type": "string",
+              "title": "Detail",
+              "description": "The error message"
+            }
+          },
+          "type": "object",
+          "required": [
+            "detail"
+          ],
+          "title": "ErrorResponse"
+        },
+        "HTTPValidationError": {
+          "properties": {
+            "detail": {
+              "items": {
+                "$ref": "#/components/schemas/ValidationError"
+              },
+              "type": "array",
+              "title": "Detail"
+            }
+          },
+          "type": "object",
+          "title": "HTTPValidationError"
+        },
+        "ProjectCreateRequest": {
+          "properties": {
+            "orchestrator_project_id": {
+              "type": "string",
+              "title": "Orchestrator Project Id",
+              "description": "The Orchestrator Project ID. Should be unique.",
+              "examples": [
+                "project_123"
+              ]
+            },
+            "domain_id": {
+              "type": "string",
+              "title": "Domain Id",
+              "description": "The Orchestrator Domain ID.",
+              "examples": [
+                "domain_123"
+              ]
+            },
+            "buyer_id": {
+              "type": "string",
+              "title": "Buyer Id",
+              "description": "The Buyer ID.",
+              "examples": [
+                "buyer_123"
+              ]
+            },
+            "client_id": {
+              "type": "string",
+              "title": "Client Id",
+              "description": "The Client ID.",
+              "examples": [
+                "client_456"
+              ]
+            },
+            "callback_url": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri",
+              "title": "Callback Url",
+              "description": "A URL that will receive a message upon completion of the project.",
+              "examples": [
+                "https://api.example.com/callback/2"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "orchestrator_project_id",
+            "domain_id",
+            "buyer_id",
+            "client_id",
+            "callback_url"
+          ],
+          "title": "ProjectCreateRequest",
+          "description": "Request model for project creation."
+        },
+        "ProjectDetailsWithFilesResponse": {
+          "properties": {
+            "orchestrator_project_id": {
+              "type": "string",
+              "title": "Orchestrator Project Id",
+              "description": "The Orchestrator Project ID. Should be unique.",
+              "examples": [
+                "project_123"
+              ]
+            },
+            "domain_id": {
+              "type": "string",
+              "title": "Domain Id",
+              "description": "The Orchestrator Domain ID.",
+              "examples": [
+                "domain_123"
+              ]
+            },
+            "buyer_id": {
+              "type": "string",
+              "title": "Buyer Id",
+              "description": "The Buyer ID.",
+              "examples": [
+                "buyer_123"
+              ]
+            },
+            "client_id": {
+              "type": "string",
+              "title": "Client Id",
+              "description": "The Client ID.",
+              "examples": [
+                "client_456"
+              ]
+            },
+            "callback_url": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri",
+              "title": "Callback Url",
+              "description": "A URL that will receive a message upon completion of the project.",
+              "examples": [
+                "https://api.example.com/callback/2"
+              ]
+            },
+            "id": {
+              "type": "integer",
+              "title": "Id",
+              "description": "ID of the Opal Project, auto-generated with each new project.",
+              "examples": [
+                123
+              ]
+            },
+            "customer_id": {
+              "type": "string",
+              "title": "Customer Id",
+              "description": "The Customer ID.",
+              "examples": [
+                "customer_123"
+              ]
+            },
+            "orchestrator": {
+              "type": "string",
+              "title": "Orchestrator",
+              "description": "The platform managing the translation project workflow.",
+              "default": "phrase",
+              "examples": [
+                "phrase"
+              ]
+            },
+            "status": {
+              "$ref": "#/components/schemas/ProjectStatus",
+              "description": "The state of the project.",
+              "examples": [
+                "created"
+              ]
+            },
+            "fail_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fail Reason",
+              "description": "The error that caused the job to fail. Empty when job did not fail.",
+              "default": "",
+              "examples": [
+                ""
+              ]
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At",
+              "description": "Timestamp when project reached final state. Empty if not completed.",
+              "default": "",
+              "examples": [
+                "",
+                "2025-01-01T10:15:31+00:00"
+              ]
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Expires At",
+              "description": "Project expiration date (6 months TTL).",
+              "examples": [
+                "2025-01-05T19:28:33+00:00"
+              ]
+            },
+            "files": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/DownloadFileResponse"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Files",
+              "description": "The files associated with the project.",
+              "default": []
+            }
+          },
+          "type": "object",
+          "required": [
+            "orchestrator_project_id",
+            "domain_id",
+            "buyer_id",
+            "client_id",
+            "callback_url",
+            "id",
+            "customer_id",
+            "status",
+            "expires_at"
+          ],
+          "title": "ProjectDetailsWithFilesResponse",
+          "description": "Project response model with files."
+        },
+        "ProjectFileCreateRequest": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name",
+              "description": "The name of the file.",
+              "examples": [
+                "file.txt"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "input",
+                "output",
+                "final"
+              ],
+              "title": "Type",
+              "description": "The type of the file.",
+              "examples": [
+                "input"
+              ]
+            },
+            "source_locale": {
+              "type": "string",
+              "title": "Source Locale",
+              "description": "The source locale of the file.",
+              "examples": [
+                "en-US"
+              ]
+            },
+            "target_locale": {
+              "type": "string",
+              "title": "Target Locale",
+              "description": "The target locale of the file.",
+              "examples": [
+                "fr-FR"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "name",
+            "type",
+            "source_locale",
+            "target_locale"
+          ],
+          "title": "ProjectFileCreateRequest",
+          "description": "Request model for project file upload."
+        },
+        "ProjectResponse": {
+          "properties": {
+            "orchestrator_project_id": {
+              "type": "string",
+              "title": "Orchestrator Project Id",
+              "description": "The Orchestrator Project ID. Should be unique.",
+              "examples": [
+                "project_123"
+              ]
+            },
+            "domain_id": {
+              "type": "string",
+              "title": "Domain Id",
+              "description": "The Orchestrator Domain ID.",
+              "examples": [
+                "domain_123"
+              ]
+            },
+            "buyer_id": {
+              "type": "string",
+              "title": "Buyer Id",
+              "description": "The Buyer ID.",
+              "examples": [
+                "buyer_123"
+              ]
+            },
+            "client_id": {
+              "type": "string",
+              "title": "Client Id",
+              "description": "The Client ID.",
+              "examples": [
+                "client_456"
+              ]
+            },
+            "callback_url": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri",
+              "title": "Callback Url",
+              "description": "A URL that will receive a message upon completion of the project.",
+              "examples": [
+                "https://api.example.com/callback/2"
+              ]
+            },
+            "id": {
+              "type": "integer",
+              "title": "Id",
+              "description": "ID of the Opal Project, auto-generated with each new project.",
+              "examples": [
+                123
+              ]
+            },
+            "customer_id": {
+              "type": "string",
+              "title": "Customer Id",
+              "description": "The Customer ID.",
+              "examples": [
+                "customer_123"
+              ]
+            },
+            "orchestrator": {
+              "type": "string",
+              "title": "Orchestrator",
+              "description": "The platform managing the translation project workflow.",
+              "default": "phrase",
+              "examples": [
+                "phrase"
+              ]
+            },
+            "status": {
+              "$ref": "#/components/schemas/ProjectStatus",
+              "description": "The state of the project.",
+              "examples": [
+                "created"
+              ]
+            },
+            "fail_reason": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Fail Reason",
+              "description": "The error that caused the job to fail. Empty when job did not fail.",
+              "default": "",
+              "examples": [
+                ""
+              ]
+            },
+            "completed_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Completed At",
+              "description": "Timestamp when project reached final state. Empty if not completed.",
+              "default": "",
+              "examples": [
+                "",
+                "2025-01-01T10:15:31+00:00"
+              ]
+            },
+            "expires_at": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Expires At",
+              "description": "Project expiration date (6 months TTL).",
+              "examples": [
+                "2025-01-05T19:28:33+00:00"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "orchestrator_project_id",
+            "domain_id",
+            "buyer_id",
+            "client_id",
+            "callback_url",
+            "id",
+            "customer_id",
+            "status",
+            "expires_at"
+          ],
+          "title": "ProjectResponse",
+          "description": "Full project response model."
+        },
+        "ProjectStatus": {
+          "type": "string",
+          "enum": [
+            "created",
+            "started",
+            "finished",
+            "canceled",
+            "failed"
+          ],
+          "title": "ProjectStatus",
+          "description": "Project status enumeration."
+        },
+        "TokenCreateRequest": {
+          "properties": {
+            "customer_id": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Customer Id",
+              "description": "Customer identifier"
+            },
+            "orchestrator": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Orchestrator",
+              "description": "Orchestrator type"
+            },
+            "created_by_email": {
+              "type": "string",
+              "format": "email",
+              "title": "Created By Email",
+              "description": "Email of the user creating the token"
+            },
+            "request_source": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Request Source",
+              "description": "Source of the request"
+            }
+          },
+          "type": "object",
+          "required": [
+            "customer_id",
+            "orchestrator",
+            "created_by_email",
+            "request_source"
+          ],
+          "title": "TokenCreateRequest",
+          "description": "Request model for creating authentication tokens."
+        },
+        "TokenInfoResponse": {
+          "properties": {
+            "expiration_date": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Expiration Date",
+              "description": "Token expiration date"
+            },
+            "created_at": {
+              "type": "string",
+              "format": "date-time",
+              "title": "Created At",
+              "description": "Token creation date"
+            },
+            "version": {
+              "type": "integer",
+              "title": "Version",
+              "description": "Token version"
+            },
+            "scope": {
+              "additionalProperties": true,
+              "type": "object",
+              "title": "Scope",
+              "description": "Token scope"
+            }
+          },
+          "type": "object",
+          "required": [
+            "created_at",
+            "version",
+            "scope"
+          ],
+          "title": "TokenInfoResponse",
+          "description": "Response model for token information."
+        },
+        "TokenRefreshRequest": {
+          "properties": {
+            "token": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Token",
+              "description": "Refresh token"
+            }
+          },
+          "type": "object",
+          "required": [
+            "token"
+          ],
+          "title": "TokenRefreshRequest",
+          "description": "Request model for refreshing authentication tokens."
+        },
+        "TokenRefreshResponse": {
+          "properties": {
+            "auth_token": {
+              "type": "string",
+              "title": "Auth Token",
+              "description": "New authentication token"
+            },
+            "auth_token_expires_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Auth Token Expires At",
+              "description": "New auth token expiration date"
+            }
+          },
+          "type": "object",
+          "required": [
+            "auth_token",
+            "auth_token_expires_at"
+          ],
+          "title": "TokenRefreshResponse",
+          "description": "Response model for token refresh operations."
+        },
+        "TokenResponse": {
+          "properties": {
+            "auth_token": {
+              "type": "string",
+              "title": "Auth Token",
+              "description": "Authentication token"
+            },
+            "refresh_token": {
+              "type": "string",
+              "title": "Refresh Token",
+              "description": "Refresh token"
+            },
+            "auth_token_expires_at": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Auth Token Expires At",
+              "description": "Auth token expiration date"
+            }
+          },
+          "type": "object",
+          "required": [
+            "auth_token",
+            "refresh_token",
+            "auth_token_expires_at"
+          ],
+          "title": "TokenResponse",
+          "description": "Response model for token operations."
+        },
+        "TokenRevokeRequest": {
+          "properties": {
+            "token": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Token",
+              "description": "Token to revoke (auth or refresh token)"
+            },
+            "revocation_reason": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Revocation Reason",
+              "description": "Reason for revocation"
+            }
+          },
+          "type": "object",
+          "required": [
+            "token",
+            "revocation_reason"
+          ],
+          "title": "TokenRevokeRequest",
+          "description": "Request model for revoking authentication tokens."
+        },
+        "UploadFileResponse": {
+          "properties": {
+            "name": {
+              "type": "string",
+              "title": "Name",
+              "description": "The name of the file.",
+              "examples": [
+                "file.txt"
+              ]
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "input",
+                "output",
+                "final"
+              ],
+              "title": "Type",
+              "description": "The type of the file.",
+              "examples": [
+                "input"
+              ]
+            },
+            "source_locale": {
+              "type": "string",
+              "title": "Source Locale",
+              "description": "The source locale of the file.",
+              "examples": [
+                "en-US"
+              ]
+            },
+            "target_locale": {
+              "type": "string",
+              "title": "Target Locale",
+              "description": "The target locale of the file.",
+              "examples": [
+                "fr-FR"
+              ]
+            },
+            "id": {
+              "type": "integer",
+              "title": "Id",
+              "description": "The ID of the file.",
+              "examples": [
+                123
+              ]
+            },
+            "project_id": {
+              "type": "integer",
+              "title": "Project Id",
+              "description": "The ID of the project.",
+              "examples": [
+                123
+              ]
+            },
+            "job_id": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Job Id",
+              "description": "The ID of the job.",
+              "examples": [
+                123
+              ]
+            },
+            "checksum": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Checksum",
+              "description": "The checksum of the file.",
+              "examples": [
+                "1234567890"
+              ]
+            },
+            "upload_url": {
+              "type": "string",
+              "maxLength": 2083,
+              "minLength": 1,
+              "format": "uri",
+              "title": "Upload Url",
+              "description": "The URL to upload the file.",
+              "examples": [
+                "https://s3.amazonaws.com/opal-uploads/project-1/input"
+              ]
+            }
+          },
+          "type": "object",
+          "required": [
+            "name",
+            "type",
+            "source_locale",
+            "target_locale",
+            "id",
+            "project_id",
+            "job_id",
+            "checksum",
+            "upload_url"
+          ],
+          "title": "UploadFileResponse",
+          "description": "Response model for file upload. Presigned URL for uploading the file to S3."
+        },
+        "ValidationError": {
+          "properties": {
+            "loc": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "integer"
+                  }
+                ]
+              },
+              "type": "array",
+              "title": "Location"
+            },
+            "msg": {
+              "type": "string",
+              "title": "Message"
+            },
+            "type": {
+              "type": "string",
+              "title": "Error Type"
+            }
+          },
+          "type": "object",
+          "required": [
+            "loc",
+            "msg",
+            "type"
+          ],
+          "title": "ValidationError"
+        }
+      },
+      "securitySchemes": {
+        "APIKeyHeader": {
+          "type": "apiKey",
+          "in": "header",
+          "name": "X-API-KEY"
+        },
+        "HTTPBearer": {
+          "type": "http",
+          "scheme": "bearer"
+        }
+      }
+    }
+  }

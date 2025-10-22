@@ -3,6 +3,7 @@ Simple HTTP client for API testing.
 """
 import requests
 import time
+import random
 from typing import Dict, Any, Optional
 from utils.auth_helper import AuthHelper
 from utils.logger import logger
@@ -77,3 +78,17 @@ class APIClient:
         """DELETE request."""
         url = self._build_url(endpoint)
         return self._make_request('DELETE', url, headers=self._get_headers(headers))
+    
+    @staticmethod
+    def generate_dynamic_name() -> str:
+        """Generate dynamic name starting with Automation123."""
+        random_suffix = random.randint(100000, 999999)
+        return f"Automation123{random_suffix}test"
+    
+    @staticmethod
+    def generate_dynamic_smallnum(dynamic_name) -> str:
+        """Generate dynamic name with 3-digit number using only digits 1, 2, 3."""
+        digits = [1, 2, 3]
+        random_suffix = ''.join(map(str, random.sample(digits, 3)))
+        return f"{dynamic_name}{random_suffix}"
+    

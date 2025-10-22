@@ -1,0 +1,6 @@
+{
+    "customer_id": "<Dynamic Name>",
+    "orchestrator": "phrase", 
+    "created_by_email": "dynamic_email@gmail.com",
+    "request_source": "AutomationTeam"
+}

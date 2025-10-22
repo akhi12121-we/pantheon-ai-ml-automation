@@ -1,0 +1,7 @@
+{
+    "orchestrator_project_id": "<Dynamic Name>",
+    "domain_id": "<Dynamic Name>",
+    "buyer_id": "<Dynamic Name>",
+    "client_id": "<Dynamic Name>",
+    "callback_url": "https://api.example.com/callback/2"
+}

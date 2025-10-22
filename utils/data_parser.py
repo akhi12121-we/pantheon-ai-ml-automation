@@ -312,6 +312,36 @@ class DataParser:
         except Exception as e:
             logger.error(f"Failed to read project name from file: {e}")
             return ""
+    
+    def get_opal_token(self) -> str:
+        """Read auth token from Opal token generation response."""
+        try:
+            response_data = self.read_json("api", "response", "opaltokenGeneration.json")
+            if response_data and "auth_token" in response_data:
+                token = response_data["auth_token"]
+                logger.info("Successfully retrieved Opal auth token")
+                return token
+            else:
+                logger.error("Auth token not found in Opal response file")
+                return ""
+        except Exception as e:
+            logger.error(f"Failed to read Opal auth token: {e}")
+            return ""
+    
+    def get_opal_refresh_token(self) -> str:
+        """Read refresh token from Opal token generation response."""
+        try:
+            response_data = self.read_json("api", "response", "opaltokenGeneration.json")
+            if response_data and "refresh_token" in response_data:
+                refresh_token = response_data["refresh_token"]
+                logger.info("Successfully retrieved Opal refresh token")
+                return refresh_token
+            else:
+                logger.error("Refresh token not found in Opal response file")
+                return ""
+        except Exception as e:
+            logger.error(f"Failed to read Opal refresh token: {e}")
+            return ""
 
 # Global data parser instance
 data_parser = DataParser()

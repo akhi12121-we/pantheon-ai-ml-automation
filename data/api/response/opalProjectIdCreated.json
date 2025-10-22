@@ -1,0 +1,14 @@
+{
+  "orchestrator_project_id": "Automation123690974test",
+  "domain_id": "domain231",
+  "buyer_id": "buyer123",
+  "client_id": "client132",
+  "callback_url": "https://api.example.com/callback/2",
+  "id": 550,
+  "customer_id": "Automation123341746test",
+  "orchestrator": "phrase",
+  "status": "created",
+  "fail_reason": "",
+  "completed_at": null,
+  "expires_at": "2026-04-20T12:46:20.187064"
+}
