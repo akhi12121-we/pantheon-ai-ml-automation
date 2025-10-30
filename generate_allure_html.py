@@ -62,11 +62,30 @@ def fix_allure_results():
     print(f"✅ Fixed {containers_created} result files with containers.")
     return True
 
+def fix_java_home():
+    """Fix JAVA_HOME environment variable if needed."""
+    import os
+    
+    # Always set to Java 25 (your installed version)
+    java_path = "C:\\Program Files\\Java\\jdk-25"
+    
+    if os.path.exists(java_path):
+        os.environ['JAVA_HOME'] = java_path
+        print(f"✅ Set JAVA_HOME to: {java_path}")
+        return True
+    else:
+        print(f"❌ Java 25 not found at: {java_path}")
+        return False
+
 def generate_allure_html(clean_first: bool = False):
     """Generate Allure HTML report."""
     allure_bin = Path("allure/allure-2.24.1/bin/allure.bat")
     allure_results = Path("allure-results")
     output_dir = Path("allure-report")
+    
+    # Fix JAVA_HOME if needed
+    if not fix_java_home():
+        return False
     
     # Clean results first if requested
     if clean_first:
