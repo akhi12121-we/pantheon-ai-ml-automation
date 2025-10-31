@@ -140,14 +140,6 @@ class Config:
     # ===========================================
     
     @classmethod
-    def get_mobile_device_config(cls, device_name: str = None):
-        """Get mobile device configuration."""
-        device_name = device_name or cls.MOBILE_DEVICE
-        if device_name == "none":
-            return None
-        return cls.MOBILE_DEVICES.get(device_name)
-    
-    @classmethod
     def get_headless_mode(cls):
         """Get headless mode setting."""
         if hasattr(cls, 'RUN_HEADLESS') and cls.RUN_HEADLESS is not None:

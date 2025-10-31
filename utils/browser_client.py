@@ -48,9 +48,6 @@ class BrowserClient:
         
         self.browser = await browser_launcher.launch(**launch_options)
         
-        # Get mobile device config if specified
-        mobile_device = config.get_mobile_device_config()
-        
         # Create simple context options like recorded script
         context_options = {}
         
@@ -61,10 +58,6 @@ class BrowserClient:
         # Add video recording - Playwright will handle failure-only logic
         if config.VIDEO_RECORDING:
             context_options["record_video_dir"] = config.VIDEO_PATH
-        
-        # Add mobile device config if specified
-        if mobile_device:
-            context_options.update(mobile_device)
         
         # Create context
         self.context = await self.browser.new_context(**context_options)
